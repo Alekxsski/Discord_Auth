@@ -9,6 +9,7 @@ CLIENT_SECRET = os.getenv('client_secret')
 REDIRECT_URI = os.getenv('redirect_uri')
 DISCORD_API_BASE_URL = os.getenv('discord_api_base_url')
 BOT_SECRET = os.getenv('bot_secret')
+GUILD_ID = os.getenv('guild_id ')
 
 db_config = {
     "host": os.getenv('host'),

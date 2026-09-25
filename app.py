@@ -22,7 +22,7 @@ async def callback(code : str, state : str):
         get_user_token = await da.get_user_token(code = code, state = state)
 
         if get_user_token[0] != 200:
-            return {"Wystąpił bład niepoprawny token": 'przyjdź na nasz discord i spróbujemy to naprawić!', "błąd" : get_user_token[0]}
+            return {"Error has occured provided user token is invalid. error code": get_user_token[0]}
 
         get_user_data = await da.get_user_data(get_user_token[1])
 
@@ -36,9 +36,9 @@ async def callback(code : str, state : str):
         
         else:
             
-            return {"Wystąpił bład twoje konto nie zostało połaczone": 'przyjdź na nasz discord i spróbujemy to naprawić!', "błąd" : get_user_data[0]}
+            return {"Error has occured and your account hasn't been linked. error code": get_user_data[0]}
 
-    return {"Wystąpił bład": 'Kod wygasł'}
+    return {"Error has occured": 'Your code has expired'}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)

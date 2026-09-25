@@ -1,6 +1,6 @@
 import requests
 
-from backend.config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DISCORD_API_BASE_URL, BOT_SECRET
+from backend.config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DISCORD_API_BASE_URL, BOT_SECRET, GUILD_ID
 from aiolimiter import AsyncLimiter
 
 rate_limit_get = AsyncLimiter(5,5)
@@ -60,7 +60,7 @@ class Discord_Oauth:
         async with rate_limit_put:
 
             adding_user = requests.put(
-                f"{self.discord_api_base_url}/guilds/1365051003732234284/members/{user_data}",
+                f"{self.discord_api_base_url}/guilds/{GUILD_ID}/members/{user_data}",
                 headers={'Authorization': f'Bot {self.bot_secret}',
                         "Content-Type": "application/json"
                         }
