@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from backend.Discord_Oauth import da
-from backend.database import db
+from backend.DiscordUserManager import dum
 import uvicorn
 
 code_check_query = "SELECT uuid FROM auth_codes WHERE code = %s" 
@@ -13,32 +12,15 @@ app = FastAPI()
 @app.get("/callback")
 async def callback(code : str, state : str):
 
-    uuid = db.execute_query(code_check_query, (state,) )
+    action = await dum.manage_user(token_code=code, state_code=state)
 
-    if uuid:
+    if action['status'] == 200:
 
-        uuid = uuid[0][0]
+        return RedirectResponse(url="https://discord.com/channels/@me")
 
-        get_user_token = await da.get_user_token(code = code, state = state)
-
-        if get_user_token[0] != 200:
-            return {"Error has occured provided user token is invalid. error code": get_user_token[0]}
-
-        get_user_data = await da.get_user_data(get_user_token[1])
-
-        db.execute_query(code_remove_query,(state,),True)
-
-        if get_user_data[0] in [200,201,204] :
-
-            db.execute_query(connect_account_query,(uuid, get_user_data[1],),True)
-
-            return RedirectResponse('https://discord.com/channels/@me')
+    else:
         
-        else:
-            
-            return {"Error has occured and your account hasn't been linked. error code": get_user_data[0]}
-
-    return {"Error has occured": 'Your code has expired'}
+        return action
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)

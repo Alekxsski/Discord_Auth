@@ -9,8 +9,8 @@ class Database:
 
     def create_pool(self):
         pool = mysql.connector.pooling.MySQLConnectionPool(pool_name=self.pool_setting['pool_name'],
-                                                                    pool_size=self.pool_setting['pool_size'],
-                                                                    **self.config)
+                                                            pool_size=self.pool_setting['pool_size'],
+                                                            **self.config)
         print("Database connection pool created.")
         return pool
 
@@ -20,7 +20,7 @@ class Database:
         cursor.close()
         conn.close()
 
-    def execute_query(self, query, params=None, commit=False):
+    async def execute_query(self, query, params=None, commit=False):
 
         connection = self.pool.get_connection()
         cursor = connection.cursor()
