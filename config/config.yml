@@ -1,0 +1,32 @@
+host:  host of database
+
+database: databasename
+
+port: 3306
+
+
+pool_name: AuthPool
+
+#maximum size of the connection that can be establish at the same time
+pool_size: 5
+
+#for how long connection will be tried to be established
+connect_timeout: 10
+
+client_id: 'your bot id'
+
+guild_id: 'your guild id'
+
+#provide your api endpoint that discord will call
+redirect_uri: ''
+
+#Don't change
+discord_api_base_url: 'https://discord.com/api/v10/'
+
+#if default role should be still given? despite user having higher primary group like vip
+default_role: true
+
+roles_to_sync:
+  base_role: 'discord role id'
+  default: 'discord role id'
+  #etc
