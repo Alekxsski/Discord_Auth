@@ -1,6 +1,4 @@
-from backend.database import db
-from backend.DiscordApi import da
-from backend.config import ROLES_TO_SYNC, DEFAULT_ROLE
+from .Config import ROLES_TO_SYNC, DEFAULT_ROLE
 
 code_check_query = "SELECT uuid FROM auth_codes WHERE code = %s" 
 code_remove_query = "DELETE FROM auth_codes WHERE code = %s"
@@ -8,24 +6,28 @@ connect_account_query = "INSERT INTO player_discord (uuid, discord_user_id) VALU
 user_data_from_mc_query = "SELECT username, primary_group FROM luckperms_players WHERE uuid = %s" 
 
 class DiscordUserManager():
-    def __init__(self):
+
+    def __init__(self,database, discordapi):
         self.roles_to_sync = ROLES_TO_SYNC
+        self.default_role = DEFAULT_ROLE
+        self.database = database
+        self.discordapi = discordapi
 
 
     async def validate_code_return_uuid(self, code):
-        return await db.execute_query(code_check_query, (code,) )
+        return await self.database.execute_query(code_check_query, (code,) )
 
 
     async def remove_code_from_database(self, code):
-        await db.execute_query(code_remove_query, (code,), True)
+        await self.database.execute_query(code_remove_query, (code,), True)
 
 
     async def connect_accounts(self, uuid, discord_user_id):
-        await db.execute_query(connect_account_query, (uuid, discord_user_id), True)
+        await self.database.execute_query(connect_account_query, (uuid, discord_user_id), True)
 
 
     async def retrive_user_mc_data(self, uuid):
-        return await db.execute_query(user_data_from_mc_query, (uuid,))
+        return await self.database.execute_query(user_data_from_mc_query, (uuid,))
 
     def retrive_external_roles(self, roles: list):
 
@@ -49,13 +51,15 @@ class DiscordUserManager():
             await self.remove_code_from_database(state_code)
 
             #Exchanging provided token for auth token
-            user_token = await da.get_user_token(token_code)
+            print(token_code)
+            
+            user_token = await self.discordapi.get_user_token(token_code)
 
             if user_token['status'] != 200:
                 return user_token
 
             #Gets user discord id
-            user = await da.get_user_discord_id(user_token['access_token'])
+            user = await self.discordapi.get_user_discord_id(user_token['access_token'])
 
             if user['status'] != 200:
                 return user
@@ -63,7 +67,7 @@ class DiscordUserManager():
             user_discord_id = user['user_discord_id']
 
             #Check if member is already in guild
-            member = await da.get_member(user_discord_id)
+            member = await self.discordapi.get_member(user_discord_id)
 
             #Empty roles 
             roles = []
@@ -75,7 +79,7 @@ class DiscordUserManager():
 
             elif member['status'] == 404:
 
-                await da.add_user_to_guild(access_token = user_token['access_token'],user_discord_id = user_discord_id)
+                await self.discordapi.add_user_to_guild(access_token = user_token['access_token'],user_discord_id = user_discord_id)
 
                 mc_data = await self.retrive_user_mc_data(uuid)
 
@@ -100,10 +104,10 @@ class DiscordUserManager():
                 if 'base_role' in self.roles_to_sync.keys():
                     roles.append(base_role)
 
-                if primary_role != default_role and DEFAULT_ROLE:
+                if primary_role != default_role and self.default_role:
                     roles.append(self.roles_to_sync['base_role'])
                     
-                await da.user_update(user_discord_id = user_discord_id, nick = nick ,roles = roles)
+                await self.discordapi.user_update(user_discord_id = user_discord_id, nick = nick ,roles = roles)
 
 
             else:
@@ -118,9 +122,6 @@ class DiscordUserManager():
 
             return {'status' : 404, 'error' : "code is invalid or has already expired"}
 
-            
-
-dum = DiscordUserManager()   
 
 
             

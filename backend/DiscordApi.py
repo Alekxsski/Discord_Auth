@@ -1,6 +1,6 @@
-import requests
+import aiohttp
 
-from backend.config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DISCORD_API_BASE_URL, BOT_SECRET, GUILD_ID
+from .Config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DISCORD_API_BASE_URL, BOT_SECRET, GUILD_ID
 from aiolimiter import AsyncLimiter
 
 rate_limit_get = AsyncLimiter(5,5)
@@ -14,12 +14,21 @@ rate_limit_patch = AsyncLimiter(1,1)
 
 
 class DiscordApi:
-    def __init__(self, client_id, client_secret, redirect_url,discord_api_base_url, bot_secret):
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.redirect_url = redirect_url
-        self.discord_api_base_url = discord_api_base_url
-        self.bot_secret = bot_secret
+    def __init__(self):
+        self.client_id = CLIENT_ID
+        self.client_secret = CLIENT_SECRET
+        self.redirect_url = REDIRECT_URI
+        self.bot_secret = BOT_SECRET
+        self.guild_id = GUILD_ID
+        self.base_url = DISCORD_API_BASE_URL
+        self.session = None
+
+    async def start(self):
+        self.session = aiohttp.ClientSession(base_url=self.base_url)
+        print("session has been created")
+
+    async def close(self):
+        self.session.close()
 
 #Using provided data from discord to get token that can manage user 
     async def get_user_token(self, code):
@@ -39,44 +48,49 @@ class DiscordApi:
             }
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            
-            token_response = requests.post(f"{self.discord_api_base_url}/oauth2/token", data=data, headers=headers)
 
-            return {'status': 200, 'access_token': token_response.json()["access_token"]}
+            response = await self.session.request(method = "POST", url = "oauth2/token", data=data, headers=headers)
+
+            if response.status == 200:
+                json = await response.json()
+                
+                return {'status': 200, 'access_token': json["access_token"]}
+
+            else:
+
+                return{'status': response.status, 'error' : "there was issue with token authorization"}
 
 #Accessing user informations with granted token
     async def get_user_discord_id(self, user_token):
         
         async with rate_limit_get:
-        
-            user_response = requests.get(
-                f"{self.discord_api_base_url}/users/@me",
-                headers={'Authorization': f'Bearer {user_token}'}
-            )
 
-            code = user_response.status_code
+            response = await self.session.request(method = "GET",url = "users/@me", headers={'Authorization': f'Bearer {user_token}'})
+
+            code = response.status
 
             if code != 200:
                 return {'status': code, 'error': "Member id couldn't be found"}
 
-            return {'status': code, 'user_discord_id': user_response.json().get('id')}
+            else:
+                json = await response.json()
+                return {'status': code, 'user_discord_id': json['id']}
 
 #Checking guild for member
     async def get_member(self,member_id):
 
-        member_data = requests.get(f"{self.discord_api_base_url}/guilds/{GUILD_ID}/members/{member_id}",
-                headers={'Authorization': f'Bot {self.bot_secret}',
+        response = await self.session.request(method = "GET", url=f"guilds/{self.guild_id}/members/{member_id}", headers={'Authorization': f'Bot {self.bot_secret}',
                         "Content-Type": "application/json"
-                        }
-            )
+                        })
 
-        code = member_data.status_code
+        code = response.status
 
         if code == 200:
-            json = member_data.json()
+            json = await response.json()
             return {'status': code, 'nick': json['nick'], 'roles' : json['roles']}
 
         else:
+
             return {'status': code, 'error' : "member couldn't be found in guild and wasn't given instant invite"}
 
 #Adding user to the designated guild
@@ -84,18 +98,10 @@ class DiscordApi:
 
         async with rate_limit_put:
 
-            adding_user = requests.put(
-                f"{self.discord_api_base_url}/guilds/{GUILD_ID}/members/{user_discord_id}",
-                headers={'Authorization': f'Bot {self.bot_secret}',
-                        "Content-Type": "application/json"
-                        }
-                ,json={
-                    "access_token": access_token
-                }
-            )
+            response = await self.session.request(method = "PUT", url=f"guilds/{self.guild_id}/members/{user_discord_id}",headers={'Authorization': f'Bot {self.bot_secret}',
+                "Content-Type": "application/json"}, json={"access_token": access_token})
 
-
-            return {'status': adding_user.status_code, 'error' : "member couldn't be added to the guild"}
+            return {'status': response.status, 'error' : "member couldn't be added to the guild"}
 
 #Updating user with specified nick and roles
 
@@ -103,21 +109,10 @@ class DiscordApi:
 
         async with rate_limit_patch:
 
-            updating_user = requests.patch(
-                f"{self.discord_api_base_url}/guilds/{GUILD_ID}/members/{user_discord_id}",
-                headers={'Authorization': f'Bot {self.bot_secret}',
-                        "Content-Type": "application/json"
-                        }
-                ,json={
-                    "nick" : nick,
-                    "roles" : roles
-                }
-            )
+            response = await self.session.request(method = "PATCH", url = f"guilds/{self.guild_id}/members/{user_discord_id}", headers={'Authorization': f'Bot {self.bot_secret}',
+                "Content-Type": "application/json"}, json={"nick" : nick, "roles" : roles})
 
-            return {'status': updating_user.status_code, 'error' : "member wasn't given any roles nor nickname"}   
+            return {'status': response, 'error' : "member wasn't given any roles nor nickname"}   
 
-
-
-da = DiscordApi(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DISCORD_API_BASE_URL, BOT_SECRET)
 
 
